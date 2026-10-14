@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ko"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>마운자로 체중 기록장</title>
+<style>
+body{margin:0;font-family:-apple-system,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;background:#fff7ef;color:#3b2f2a;font-size:19px}
+header{background:#f4a261;color:#fff;padding:18px;text-align:center;font-size:24px;font-weight:bold}
+main{padding:14px;max-width:560px;margin:auto}
+.card{background:#fff;border-radius:18px;padding:16px;margin-bottom:14px;box-shadow:0 2px 8px #0001}
+h2{font-size:21px;margin:0 0 10px;color:#c8662b}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:#fff1e3;border-radius:12px;padding:10px;text-align:center}
+.stat b{display:block;font-size:26px;color:#2a7f62}
+label{display:block;margin:10px 0 4px;font-weight:bold}
+input,select,textarea{width:100%;box-sizing:border-box;font-size:20px;padding:12px;border:2px solid #f0c9a5;border-radius:12px}
+.chk{display:flex;align-items:center;gap:10px;margin-top:12px}.chk input{width:28px;height:28px}
+button{font-size:20px;padding:14px;border:0;border-radius:14px;background:#2a9d8f;color:#fff;width:100%;margin-top:12px;font-weight:bold}
+button.sub{background:#e9c46a;color:#3b2f2a}button.del{background:#e76f51}
+.entry{border-bottom:1px solid #f3dcc6;padding:10px 0}.entry .t{font-weight:bold;font-size:20px}
+.row{display:flex;gap:8px}.row button{padding:10px;font-size:17px}
+</style></head><body>
+<header>💉 마운자로 체중 기록장</header>
+<main>
+<div class="card"><h2>📊 나의 변화</h2><div class="grid">
+<div class="stat">시작 체중<b id="s1">-</b></div><div class="stat">현재 체중<b id="s2">-</b></div>
+<div class="stat">총 감량<b id="s3">-</b></div><div class="stat">진행<b id="s4">-</b></div></div></div>
+<div class="card"><h2>📈 체중 그래프</h2><div id="chart"></div></div>
+<div class="card"><h2 id="ft">✏️ 기록하기</h2>
+<label>날짜</label><input type="date" id="d">
+<label>체중 (kg)</label><input type="number" step="0.1" inputmode="decimal" id="w" placeholder="예: 70.5">
+<label>투여 용량 (mg)</label><select id="m"><option value="">선택 안 함</option><option>2.5</option><option>5</option><option>7.5</option><option>10</option><option>12.5</option><option>15</option></select>
+<div class="chk"><input type="checkbox" id="inj"><span>오늘 주사 맞았어요</span></div>
+<label>메모</label><textarea id="n" rows="2" placeholder="예: 컨디션 좋음"></textarea>
+<button onclick="save()">저장하기</button><button class="sub" id="cancel" style="display:none" onclick="resetForm()">수정 취소</button></div>
+<div class="card"><h2>📋 기록 목록</h2><div id="list"></div></div>
+<div class="card"><h2>💾 백업</h2>
+<button class="sub" onclick="exp()">백업 파일 저장하기</button>
+<button class="sub" onclick="document.getElementById('f').click()">백업 불러오기</button>
+<input type="file" id="f" accept=".json" style="display:none" onchange="imp(this)"></div>
+</main>
+<script>
+const K='mounjaro-log';let data=JSON.parse(localStorage.getItem(K)||'null'),editId=null;
+if(!data){data=[];store();}
+function store(){localStorage.setItem(K,JSON.stringify(data))}
+const $=i=>document.getElementById(i);
+function today(){const t=new Date();t.setMinutes(t.getMinutes()-t.getTimezoneOffset());return t.toISOString().slice(0,10)}
+function resetForm(){editId=null;$('d').value=today();$('w').value='';$('m').value='';$('inj').checked=false;$('n').value='';$('ft').textContent='✏️ 기록하기';$('cancel').style.display='none'}
+function save(){const w=parseFloat($('w').value);if(!$('d').value||!w){alert('날짜와 체중을 입력해 주세요');return}
+const e={id:editId||Date.now(),date:$('d').value,w,mg:$('m').value,inj:$('inj').checked,note:$('n').value.trim()};
+if(editId)data=data.map(x=>x.id===editId?e:x);else data.push(e);store();resetForm();render()}
+function edit(id){const e=data.find(x=>x.id===id);editId=id;$('d').value=e.date;$('w').value=e.w;$('m').value=e.mg;$('inj').checked=e.inj;$('n').value=e.note;$('ft').textContent='✏️ 기록 수정';$('cancel').style.display='block';scrollTo({top:$('ft').offsetTop-20,behavior:'smooth'})}
+function del(id){if(confirm('이 기록을 지울까요?')){data=data.filter(x=>x.id!==id);store();render()}}
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+function render(){const s=[...data].sort((a,b)=>a.date.localeCompare(b.date));
+if(s.length){const a=s[0],z=s[s.length-1],diff=a.w-z.w,days=Math.round((new Date(today())-new Date(a.date))/864e5);
+$('s1').textContent=a.w+'kg';$('s2').textContent=z.w+'kg';$('s3').textContent=(diff>=0?'-':'+')+Math.abs(diff).toFixed(1)+'kg';$('s4').textContent=(Math.floor(days/7)+1)+'주차'}
+else ['s1','s2','s3','s4'].forEach(i=>$(i).textContent='-');
+$('list').innerHTML=s.slice().reverse().map(e=>`<div class="entry"><div class="t">${e.date} · ${e.w}kg</div><div>${e.mg?'💊 '+e.mg+'mg ':''}${e.inj?'💉 주사 ':''}${e.note?'📝 '+esc(e.note):''}</div><div class="row"><button class="sub" onclick="edit(${e.id})">수정</button><button class="del" onclick="del(${e.id})">삭제</button></div></div>`).join('')||'아직 기록이 없어요';
+chart(s)}
+function chart(s){if(s.length<1){$('chart').innerHTML='';return}const W=340,H=200,p=36,ws=s.map(e=>e.w),mn=Math.min(...ws)-1,mx=Math.max(...ws)+1;
+const X=i=>s.length==1?W/2:p+i*(W-2*p)/(s.length-1),Y=v=>H-p+(-(v-mn)/(mx-mn))*(H-2*p);
+let g=`<svg viewBox="0 0 ${W} ${H}" width="100%"><polyline fill="none" stroke="#2a9d8f" stroke-width="4" points="${s.map((e,i)=>X(i)+','+Y(e.w)).join(' ')}"/>`;
+s.forEach((e,i)=>g+=`<circle cx="${X(i)}" cy="${Y(e.w)}" r="6" fill="#e76f51"/><text x="${X(i)}" y="${Y(e.w)-12}" font-size="15" text-anchor="middle">${e.w}</text><text x="${X(i)}" y="${H-10}" font-size="13" text-anchor="middle">${e.date.slice(5).replace('-','/')}</text>`);
+$('chart').innerHTML=g+'</svg>'}
+function exp(){const b=new Blob([JSON.stringify(data,null,1)],{type:'application/json'}),a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='마운자로기록_'+today()+'.json';a.click()}
+function imp(el){const r=new FileReader();r.onload=()=>{try{const d=JSON.parse(r.result);if(!Array.isArray(d))throw 0;if(confirm('지금 기록을 백업 내용으로 바꿀까요?')){data=d;store();render()}}catch(e){alert('백업 파일을 읽을 수 없어요')}};r.readAsText(el.files[0]);el.value=''}
+resetForm();render();
+</script></body></html>
